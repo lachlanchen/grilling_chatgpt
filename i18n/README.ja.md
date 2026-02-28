@@ -1,6 +1,8 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
+
 # OpenAIRequestBase 使用ガイド
 
 ![Python](https://img.shields.io/badge/Python-3.6%2B-3776AB?logo=python&logoColor=white)
@@ -9,111 +11,151 @@
 ![JSON5](https://img.shields.io/badge/JSON-JSON5-ffb000)
 ![Cache](https://img.shields.io/badge/Cache-Local%20JSON-0a7ea4)
 
-> JSON パースと構造検証を備えた、構造化された OpenAI リクエスト／リトライ／キャッシュユーティリティ。
+> JSON パースと形状検証を備えた、構造化された OpenAI のリクエスト/リトライ/キャッシュユーティリティです。
 
+---
+
+<a id="highlights"></a>
+## ✨ ハイライト
+
+| 領域 | 詳細 |
+|---|---|
+| API パターン | 共通のリトライパイプラインを中心に、特化したリクエストメソッドをサブクラスとして実装 |
+| 出力仕様 | 決定論的な JSON パース + スキーマ構造の検証 |
+| 信頼性 | レスポンスキャッシュ、文脈付きリトライ、明確な失敗表示 |
+| 互換性 | Python 3.6+、OpenAI SDK、JSON5 |
+
+<a id="quick-navigation"></a>
+## 🚀 クイックナビゲーション
+
+| セクション | リンク |
+|---|---|
+| 概要 | [Overview](#overview) |
+| 機能 | [Features](#features) |
+| プロジェクト構成 | [Project Structure](#project-structure) |
+| 前提条件 | [Prerequisites](#prerequisites) |
+| インストール | [Installation](#installation) |
+| 使い方 | [Usage](#usage) |
+| API リファレンス | [API Reference](#api-reference) |
+| 設定 | [Configuration](#configuration) |
+| 例 | [Examples](#examples) |
+| 開発ノート | [Development Notes](#development-notes) |
+| トラブルシューティング | [Troubleshooting](#troubleshooting) |
+| ロードマップ | [Roadmap](#roadmap) |
+| コントリビュート | [Contribution](#contribution) |
+| サポート | [❤️ Support](#support) |
+| ライセンス | [License](#license) |
+
+<a id="overview"></a>
 ## 概要
-このリポジトリには `OpenAIRequestBase` クラスが含まれており、OpenAI API へのリクエスト実行と JSON レスポンス処理を構造化して行えます。
 
-主な対応機能:
-- エラー文脈を段階的に増やすリクエストリトライ
-- ローカル JSON ファイルへのレスポンスキャッシュ
-- モデル出力テキストからの JSON 抽出／パース
-- サンプル構造に対する再帰的 JSON 形状検証
+このリポジトリは、決定論的な構造化 JSON ワークフローで OpenAI チャット補完リクエストを実行するための再利用可能な基底クラス `OpenAIRequestBase` を提供します。
 
-この README は、元プロジェクトのガイダンスを正本として維持しつつ、リポジトリ実態に合わせた情報を拡充しています。
+- 再利用可能なリクエストパイプラインを構築
+- JSON 風の出力を堅牢に解析
+- 応答形状をテンプレートと比較して検証
+- 成功レスポンスをローカルでキャッシュ
+- パース/検証失敗時に文脈付きで自動リトライ
 
-## クイックスナップショット
+この README は既存のプロジェクトガイダンスを保持しつつ、実践的なセットアップ参照として内容を拡張しています。
+
+<a id="features"></a>
+## 機能
+
+| 機能 | 説明 |
+|---|---|
+| コア API ラッパー | `OpenAIRequestBase` クラスがリクエストのオーケストレーションとキャッシュ処理をカプセル化 |
+| リトライループ | `send_request_with_retry(...)` はエラー時に `max_retries` に到達するまで再実行 |
+| JSON パース | `parse_response(...)` はモデル出力から最初の JSON オブジェクト/配列を抽出し `json5` で解析 |
+| 形状検証 | `validate_json(...)` は `sample_json` に対して再帰的に型と構造を検証 |
+| キャッシュサポート | 設定可能なディレクトリと任意のファイル名を持つローカルキャッシュを提供 |
+| モデル設定 | 環境変数 `OPENAI_MODEL`、またはフォールバック `gpt-4-0125-preview` を使用 |
+| エラー文脈 | リトライ時に直近のモデル出力と例外情報を次のシステムメッセージへ追記 |
+
+### クイックスナップショット
+
 | 項目 | 値 |
 |---|---|
 | メイン実装 | `openai_request.py` |
-| コアクラス | `OpenAIRequestBase` |
-| 主要パターン | サブクラス化して `send_request_with_retry(...)` を呼び出す |
-| 既定のモデルフォールバック | `gpt-4-0125-preview` |
+| 中核クラス | `OpenAIRequestBase` |
+| 主な実装パターン | サブクラス化 + `send_request_with_retry(...)` 呼び出し |
+| 既定モデル | `gpt-4-0125-preview` |
 | 既定キャッシュ | `cache/<hash(prompt)>.json` |
-| i18n ディレクトリ | `i18n/`（存在済み。言語ファイルは生成可能） |
+| i18n ディレクトリ | `i18n/`（言語リンクあり） |
 
-## 機能
-- 再利用可能なベースクラス: `OpenAIRequestBase`
-- カスタム例外:
-  - `JSONValidationError`
-  - `JSONParsingError`
-- 設定可能なキャッシュ動作:
-  - キャッシュ有効／無効 (`use_cache`)
-  - カスタムキャッシュディレクトリ (`cache_dir`)
-  - 任意の明示的キャッシュファイル名 (`filename`)
-- `max_retries` を設定できるリトライループ
-- `OPENAI_MODEL` による環境変数ベースのモデル選択
-- `json5` を使った許容度の高い JSON パース
-
+<a id="project-structure"></a>
 ## プロジェクト構成
+
 ```text
 grilling_chatgpt/
 ├── README.md
 ├── openai_request.py
 ├── i18n/
-│   └── (directory exists; multilingual README files can be added here)
+│   ├── README.ar.md
+│   ├── README.de.md
+│   ├── README.es.md
+│   ├── README.fr.md
+│   ├── README.ja.md
+│   ├── README.ko.md
+│   ├── README.ru.md
+│   ├── README.vi.md
+│   ├── README.zh-Hans.md
+│   └── README.zh-Hant.md
 └── .auto-readme-work/
-    └── 20260228_190301/
-        ├── pipeline-context.md
-        ├── repo-structure-analysis.md
-        ├── translation-plan.txt
-        ├── language-nav-root.md
-        └── language-nav-i18n.md
+    └── ...
 ```
 
-## 要件
-正本 README に記載の元要件:
+> 前提: このリポジトリはライブラリ形式（CLI ではない）で、ルートに依存関係定義ファイルがなく、`cache/` ディレクトリも事前作成されていません。
+
+<a id="prerequisites"></a>
+## 前提条件
+
 - Python 3.6+
-- openai
-- os
-- json
-- json5
-- re
-- traceback
-- glob
+- OpenAI Python パッケージ (`openai`)
+- JSON5 パーサーパッケージ (`json5`)
+- `openai.OpenAI()` で利用できる OpenAI 認証情報へのアクセス
 
-リポジトリ内コードで追加インポートされているもの:
-- csv
-- datetime
+コードで使用している標準ライブラリは要件リストに追加されていません。
 
-注記:
-- 標準ライブラリモジュール（`os`, `json`, `re`, `traceback`, `glob`, `csv`, `datetime`）は別途インストール不要です。
-- `OpenAI()` が認証できるように、実行環境へ OpenAI 認証情報を設定する必要があります。
+- `os`, `json`, `json5`（サードパーティ）、`traceback`, `glob`, `re`, `csv`, `datetime`
 
 ### 依存関係テーブル
-| パッケージ／モジュール | 種別 | インストール要否 |
-|---|---|---|
-| `openai` | 外部 | 必要（`pip install openai`） |
-| `json5` | 外部 | 必要（`pip install json5`） |
-| `os`, `json`, `traceback`, `glob`, `re`, `csv`, `datetime` | Python 標準ライブラリ | 不要 |
 
+| パッケージ/モジュール | 種別 | 必要か |
+|---|---|---|
+| `openai` | 外部 | はい |
+| `json5` | 外部 | はい |
+| `os`, `json`, `traceback`, `glob`, `re`, `csv`, `datetime` | 標準ライブラリ | いいえ |
+
+<a id="installation"></a>
 ## インストール
-必要な Python パッケージをインストールします:
+
+依存関係をインストールします。
 
 ```bash
 pip install openai json5
 ```
 
-任意（推奨）の仮想環境セットアップ:
+推奨の仮想環境セットアップ:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # macOS/Linux
 pip install --upgrade pip
 pip install openai json5
 ```
 
+<a id="usage"></a>
 ## 使い方
 
-### OpenAIRequestBase を拡張する
-`OpenAIRequestBase` のサブクラスを作成します。必要に応じて既存メソッドをオーバーライドしたり、用途固有の機能を追加したりできます。
+### 1) 基底クラスを拡張する
 
-#### 例: WeatherInfoRequest
-以下は天気情報を取得するための元サンプルクラスパターンです。検証に使う JSON 構造はプロンプトに直接渡されています。
+サブクラスを作成し、ドメイン固有プロンプト向けに独自メソッドを公開します。
 
 ```python
 import json
 from openai_request import OpenAIRequestBase
+
 
 class WeatherInfoRequest(OpenAIRequestBase):
     def __init__(self):
@@ -122,172 +164,196 @@ class WeatherInfoRequest(OpenAIRequestBase):
     def get_weather_info(self, location):
         sample_json = {"temperature": "", "condition": ""}
         sample_json_str = json.dumps(sample_json)
-        prompt = f"What is the current weather in {location}? Expected format: {sample_json_str}"
+        prompt = f"What is the current weather in {location}? Return JSON in the form: {sample_json_str}"
         return self.send_request_with_retry(prompt, sample_json=sample_json)
+
+
+requester = WeatherInfoRequest()
+print(requester.get_weather_info("San Francisco"))
 ```
 
-互換性に関する注記:
-- 以前のドキュメントでは `from openai_request_base import OpenAIRequestBase` が参照されていました。
-- このリポジトリでは実装ファイルが `openai_request.py` のため、`openai_request` からインポートします。
-
-### リクエストを送る
-派生クラスを使って API リクエストを実行します:
+### 2) リクエストインスタンスを直接使用する
 
 ```python
-weather_requester = WeatherInfoRequest()
-try:
-    weather_info = weather_requester.get_weather_info("San Francisco")
-    print(weather_info)
-except Exception as e:
-    print(f"An error occurred: {e}")
-```
+from openai_request import OpenAIRequestBase
 
-### コア API
-`OpenAIRequestBase` のコンストラクタ:
-
-```python
-OpenAIRequestBase(use_cache=True, max_retries=3, cache_dir='cache')
-```
-
-メインリクエストメソッド:
-
-```python
-send_request_with_retry(
-    prompt,
-    system_content="You are an AI.",
-    sample_json=None,
-    filename=None,
+requester = OpenAIRequestBase(use_cache=True, max_retries=3)
+result = requester.send_request_with_retry(
+    prompt="Return JSON with fields: {\"ok\": true, \"value\": 42}",
+    sample_json={"ok": False, "value": 0},
 )
+print(result)
 ```
 
-動作概要:
-1. チャットメッセージ（`system` + `user`）を構築します。
-2. `use_cache=True` のとき、先にキャッシュを確認します。
-3. `OPENAI_MODEL` の値、またはフォールバック `gpt-4-0125-preview` で Chat Completions を呼び出します。
-4. レスポンステキストから最初の JSON オブジェクト／配列を抽出します。
-5. `json5` でパースします。
-6. `sample_json` がある場合は構造を検証します。
-7. パース済み出力をキャッシュへ保存します。
-8. 成功するかリトライ上限に達するまで再試行します。
+### 3) コア呼び出しの動作
 
-### API 一覧
-| メソッド | 用途 |
-|---|---|
-| `send_request_with_retry(...)` | リクエスト実行、パース、検証、リトライ、キャッシュ書き込み |
-| `parse_response(response)` | 最初の JSON オブジェクト／配列を抽出し、`json5` でパース |
-| `validate_json(json_data, sample_json)` | 再帰的な形状／型検証 |
-| `save_to_cache(...)` / `load_from_cache(...)` | JSON レスポンスペイロードの保存／取得 |
-| `get_cache_file_path(prompt, filename=None)` | キャッシュ保存先パスを計算し、親ディレクトリを作成 |
+`send_request_with_retry(...)`:
 
+1. キャッシュ応答（またはファイル名）を任意で読み込み
+2. `client.chat.completions.create(...)` を呼び出し
+3. JSON テキストを抽出して `json5` でパース
+4. 指定されていれば `sample_json` と照合して検証
+5. パース結果をキャッシュ
+6. 成功時にパース済み JSON を返却
+
+リトライ時は、最新の出力と例外情報を次回のシステムメッセージへ追記し、上限到達まで再試行します。
+
+<a id="api-reference"></a>
+## API リファレンス
+
+### `OpenAIRequestBase.__init__(use_cache=True, max_retries=3, cache_dir='cache')`
+- OpenAI クライアントを初期化します。
+- キャッシュ方針を制御します。
+- `ensure_dir_exists` でキャッシュディレクトリを事前作成します。
+
+### `send_request_with_retry(prompt, system_content='You are an AI.', sample_json=None, filename=None)`
+- リクエストのオーケストレーションを実行します。
+- パース済み JSON を返却します。
+- リトライ上限到達時に汎用 `Exception` を送出します。
+
+### `parse_response(response)`
+- 最初の JSON オブジェクト `{...}` または配列 `[...]` を見つけ、`json5` でパースします。
+
+### `validate_json(json_data, sample_json)`
+- 実体とサンプルの型一致を確認。
+- 辞書の必須キーとリスト項目構造を再帰的に検証。
+
+### `get_cache_file_path(prompt, filename=None)`
+- キャッシュパスを計算・確保。
+- 既定で決定論的ハッシュ名 `abs(hash(prompt)).json` を使用。
+
+### `save_to_cache(prompt, response, filename=None)` / `load_from_cache(prompt, filename=None)`
+- 反復実行可能な性を確保するため、JSON ペイロードの保存/読込を行う。
+
+<a id="configuration"></a>
 ## 設定
 
-### 環境変数
-- `OPENAI_MODEL`: リクエストで使うモデル名の上書き。
-  - コード内の既定値: `gpt-4-0125-preview`
-
 ### OpenAI 認証
-実行前に OpenAI API キーを設定してください。例:
+
+実行前に認証情報を環境に設定します。実際の挙動はインストール済みの `openai` パッケージが管理します。
 
 ```bash
-export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_API_KEY="your_api_key_here"  # 環境またはクライアントで必要な場合
+```
+
+### モデル選択
+
+```bash
+export OPENAI_MODEL="gpt-4o-mini"  # 利用アカウントでサポートされる任意のモデル
 ```
 
 ### キャッシュ設定
-- 既定キャッシュディレクトリ: `cache/`
-- 既定キャッシュファイル名: プロンプトのハッシュ（`<hash>.json`）
-- `filename` パラメータでカスタムパス指定に対応
 
-明示的なキャッシュファイル名を使う例:
+- `use_cache` でキャッシュを切り替え
+- `cache_dir` でキャッシュディレクトリを指定
+- `filename` でファイル名を上書き
 
 ```python
-result = weather_requester.send_request_with_retry(
-    prompt="...",
-    sample_json={"temperature": "", "condition": ""},
-    filename="weather/sf.json",
+requester = OpenAIRequestBase(use_cache=True, cache_dir="my_cache")
+result = requester.send_request_with_retry(
+    prompt="Return a JSON summary of the weather risk profile.",
+    sample_json={"risk_level": "", "notes": []},
+    filename="weather/summary.json",
 )
 ```
 
+<a id="examples"></a>
 ## 例
 
-### 例 1: リスト形状の検証
+### 例 A: JSON 配列検証
+
 ```python
+requester = OpenAIRequestBase()
 sample_json = [{"name": "", "age": 0}]
-prompt = "Return a JSON array of people with fields name and age."
-result = requester.send_request_with_retry(prompt, sample_json=sample_json)
+prompt = 'Return a JSON array of people with fields name and age.'
+result = requester.send_request_with_retry(prompt=prompt, sample_json=sample_json)
+print(result)
 ```
 
-### 例 2: キャッシュを無効化
+### 例 B: キャッシュを無効化
+
 ```python
-requester = OpenAIRequestBase(use_cache=False, max_retries=3)
+requester = OpenAIRequestBase(use_cache=False, max_retries=2)
+print(requester.send_request_with_retry("Return strict JSON: {\"status\": \"ok\"}", sample_json={"status": ""}))
 ```
 
-### 例 3: カスタム System Prompt
+### 例 C: カスタムシステムプロンプト
+
 ```python
+requester = OpenAIRequestBase()
 result = requester.send_request_with_retry(
-    prompt="Return output as JSON only.",
-    system_content="You are a strict JSON generator.",
-    sample_json={"ok": True},
+    prompt="Return JSON only with keys: summary, sources.",
+    system_content="You are a concise JSON-only analyst.",
+    sample_json={"summary": "", "sources": []},
 )
 ```
 
+<a id="development-notes"></a>
 ## 開発ノート
-- 現時点で、リポジトリルートに `requirements.txt`、`pyproject.toml`、テストスイートはありません。
-- 現在のアーキテクチャは CLI ツールではなく、ライブラリ形式（インポートしてサブクラス化）です。
-- `parse_response` は正規表現ベースで JSON ブロックを抽出するため、JSON らしいブロックが複数ある曖昧な出力では、慎重なプロンプト設計が必要です。
-- リトライ経路では、以前のモデル出力とエラー詳細が次回以降の system メッセージへ追記されます。
 
-### リポジトリ整合性ノート
-- `openai_request.py` は現在 `csv`、`datetime`、`glob` を import しています。主要ユースケースの中心ではない場合でも、正確性のため本ドキュメントに保持しています。
-- `JSONParsingError` はデバッグ目的で失敗した JSON 内容を出力します。本番環境では機微情報のログ出力に注意してください。
+- このリポジトリには `requirements.txt`、`pyproject.toml`、`setup.py`、テストスイートはありません。
+- コアのインポートには重要経路外の標準ライブラリモジュール（`csv`、`datetime`、`glob`）が含まれており、互換性のため保持しています。
+- `parse_response` は正規表現抽出に依存しており、モデル出力に複数の JSON 風ブロックがある場合は、明示的なプロンプト設計がより重要になります。
+- JSON 検証は構造・型の整合性のみを保証し、意味的妥当性までは検証しません。
+- リトライ経路では、前回の AI 出力とエラー詳細が追加入力として送信されるため、コンテキスト量が増える場合があります。
 
+<a id="troubleshooting"></a>
 ## トラブルシューティング
 
-### `No JSON structure found` / `No matching JSON structure found`
-- プロンプトで JSON 出力を明示的に要求してください。
-- プロンプトに期待フォーマット例を含めてください。
-- JSON を markdown でラップする要求は避けてください。
+### 症状: `JSONParsingError` が繰り返し発生する
+- モデル出力を JSON のみのテキストに厳密化してください。
+- プロンプトを絞り、明示的なサンプルスキーマを与える。
+- 複数の JSON 断片が出る可能性がある場合は、`Return only one JSON object/array.` を要求してください。
 
-### `Failed to decode JSON`
-- モデル出力に不正な JSON 構文が含まれている可能性があります。
-- 「有効な JSON のみ返し、説明文は不要」と指示を強めてください。
+### 症状: `Maximum retries reached without success`
+- `OPENAI_API_KEY` とネットワークアクセスを確認してください。
+- `OPENAI_MODEL` のモデル名がアカウントで利用可能か確認します。
+- プロンプトを簡潔にし、`sample_json` の型・形状を慎重に検証してください。
 
-### 検証エラー (`JSONValidationError`)
-- 必須キーとコンテナ型が `sample_json` と正確に一致しているか確認してください。
-- リストスキーマでは `sample_json[0]` が全要素のテンプレートとして扱われます。
+### 症状: キャッシュがヒットしない
+- キャッシュはプロンプトハッシュでキー化されます。
+- プロンプト本文やファイル名を変更すると新しいキャッシュエントリが作成されます。
+- キャッシュディレクトリのパーミッションを確認してください。
 
-### キャッシュの混線や古い結果
-- デバッグ時はキャッシュを無効化（`use_cache=False`）します。
-- 実験ごとに `filename` を明示指定して分離します。
+### 症状: `json5` からの例外が不明瞭
+- とくに引用符や波括弧を含む文字列には、厳密なプロンプト例を含める。
+- まずは単純なデータ構造（平坦なオブジェクト）で検証し、必要に応じてネストを増やす。
 
-### トラブルシューティングマトリクス
-| 症状 | 主な原因 | 実用的な対処 |
-|---|---|---|
-| 空出力／非 JSON 出力 | プロンプトの制約が弱い | 明示スキーマ付きで JSON のみを要求する |
-| パース失敗 | モデル出力の JSON 構文が不正 | 「有効な JSON のみ、説明不要」を追加する |
-| 検証失敗 | `sample_json` との形状不一致 | 必須キー／型とリスト項目構造を揃える |
-| 予期しない古い応答 | キャッシュヒット | キャッシュを無効化するか `filename` を変更する |
-
+<a id="roadmap"></a>
 ## ロードマップ
-- 正式なパッケージ化（`pyproject.toml`）と依存関係の固定を追加する。
-- パース、検証、キャッシュ、リトライ挙動の自動テストを追加する。
-- 正規表現エッジケースを減らすため、JSON 抽出戦略を改善する。
-- `examples/` ディレクトリ配下に実行可能なサンプル／スクリプトを追加する。
-- 言語オプション行からリンクされたローカライズ README で `i18n/` を充実させる。
 
-## コントリビュート
-機能拡張やバグ修正のための Pull Request、または Issue の作成を歓迎します。
+既存コードパターンに沿って、以下の改善を予定しています。
 
-コントリビュート時には次を含めてください:
-- バグ報告の明確な再現手順
-- 期待動作と実際の動作
-- 必要に応じた最小限の利用コード断片
+- [ ] 最低限のテストスイート（`pytest`）を追加し、parse/validation/cache の動作を検証
+- [ ] `print` 文を直接使う代わりに、構造化ログを追加
+- [ ] 任意の async パス（`asyncio` 版）を追加
+- [ ] 一括プロンプトと複数スキーマ応答の例を追加
+- [ ] 厳密な JSON Schema 検証モードを追加
 
-## About
-このプロジェクトは Lachlan Chen が管理しており、「The Art of Lazying」チャンネルの取り組みの一部です。
+<a id="contribution"></a>
+## コントリビューション
 
-## ライセンス
-このプロジェクトは MIT License の下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
+コントリビューションは歓迎します。
 
-リポジトリ注記:
-- 元 README で参照されていた `LICENSE` ファイルは、正本ガイダンスとして維持しています。
-- 現在のチェックアウトで `LICENSE` がない場合は、ライセンスを明示するため追加してください。
+1. リポジトリをフォークします。
+2. フィーチャーブランチを作成します。
+3. README/API の例を更新または追加し、既存実装と整合する動作変更に限定します。
+4. リクエスト/パース経路（キャッシュ有効/無効、リトライ、検証）を手動で確認します。
+5. 明確な意図と例を添えて PR を提出します。
+
+提案されるコントリビュート基準:
+
+- ドキュメントをコード挙動と同期させる。
+- 既定キャッシュ構造を変更する場合は README を更新する。
+- リクエストオーケストレーションには後方互換の変更を優先する。
+
+<a id="support"></a>
+## ❤️ Support
+
+| Donate | PayPal | Stripe |
+| --- | --- | --- |
+| [![Donate](https://camo.githubusercontent.com/24a4914f0b42c6f435f9e101621f1e52535b02c225764b2f6cc99416926004b7/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f446f6e6174652d4c617a79696e674172742d3045413545393f7374796c653d666f722d7468652d6261646765266c6f676f3d6b6f2d6669266c6f676f436f6c6f723d7768697465)](https://chat.lazying.art/donate) | [![PayPal](https://camo.githubusercontent.com/d0f57e8b016517a4b06961b24d0ca87d62fdba16e18bbdb6aba28e978dc0ea21/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f50617950616c2d526f6e677a686f754368656e2d3030343537433f7374796c653d666f722d7468652d6261646765266c6f676f3d70617970616c266c6f676f436f6c6f723d7768697465)](https://paypal.me/RongzhouChen) | [![Stripe](https://camo.githubusercontent.com/1152dfe04b6943afe3a8d2953676749603fb9f95e24088c92c97a01a897b4942/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f5374726970652d446f6e6174652d3633354246463f7374796c653d666f722d7468652d6261646765266c6f676f3d737472697065266c6f676f436f6c6f723d7768697465)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
+
+## License
+
+このチェックアウトにはリポジトリレベルのライセンスファイルがありません。運用配布前に `LICENSE` ファイルを追加してください。

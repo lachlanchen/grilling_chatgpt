@@ -1,7 +1,9 @@
 [English](../README.md) · [العربية](README.ar.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Tiếng Việt](README.vi.md) · [中文 (简体)](README.zh-Hans.md) · [中文（繁體）](README.zh-Hant.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 
-# Hướng Dẫn Sử Dụng OpenAIRequestBase
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
+
+# Hướng dẫn sử dụng OpenAIRequestBase
 
 ![Python](https://img.shields.io/badge/Python-3.6%2B-3776AB?logo=python&logoColor=white)
 ![OpenAI SDK](https://img.shields.io/badge/OpenAI-SDK-111111?logo=openai&logoColor=white)
@@ -9,20 +11,67 @@
 ![JSON5](https://img.shields.io/badge/JSON-JSON5-ffb000)
 ![Cache](https://img.shields.io/badge/Cache-Local%20JSON-0a7ea4)
 
-> Bộ tiện ích có cấu trúc cho OpenAI gồm gửi request/thử lại/cache, kèm phân tích JSON + kiểm tra shape.
+> Bộ công cụ OpenAI có cấu trúc cho luồng request/thử lại/cache với phân tích JSON + kiểm tra hình dạng đầu ra.
 
-## Tổng Quan
-Repository này chứa lớp `OpenAIRequestBase`, cung cấp cách tiếp cận có cấu trúc để gửi yêu cầu tới OpenAI API và xử lý phản hồi JSON.
+---
 
-Hỗ trợ:
-- thử lại request với ngữ cảnh lỗi tăng dần
-- cache phản hồi vào file JSON cục bộ
-- trích xuất/phân tích JSON từ văn bản đầu ra của mô hình
-- kiểm tra shape JSON đệ quy dựa trên mẫu được cung cấp
+## ✨ Điểm nổi bật
 
-README này giữ nguyên hướng dẫn gốc của dự án làm chuẩn và mở rộng thêm các chi tiết chính xác theo repository.
+| Khu vực | Chi tiết |
+|---|---|
+| Mô hình API | Kế thừa lớp và triển khai các phương thức request tập trung quanh pipeline retry dùng chung |
+| Hợp đồng đầu ra | Parse JSON có tính xác định + kiểm tra đúng cấu trúc mẫu |
+| Độ tin cậy | Cache phản hồi, retry ngữ cảnh, và báo lỗi rõ ràng |
+| Tương thích | Python 3.6+, OpenAI SDK, JSON5 |
 
-## Tóm Tắt Nhanh
+## 🚀 Điều hướng nhanh
+
+| Mục | Liên kết |
+|---|---|
+| Tổng quan | [Overview](#overview) |
+| Tính năng | [Features](#features) |
+| Cấu trúc dự án | [Project Structure](#project-structure) |
+| Yêu cầu trước | [Prerequisites](#prerequisites) |
+| Cài đặt | [Installation](#installation) |
+| Cách sử dụng | [Usage](#usage) |
+| Tham chiếu API | [API Reference](#api-reference) |
+| Cấu hình | [Configuration](#configuration) |
+| Ví dụ | [Examples](#examples) |
+| Ghi chú phát triển | [Development Notes](#development-notes) |
+| Khắc phục lỗi | [Troubleshooting](#troubleshooting) |
+| Lộ trình | [Roadmap](#roadmap) |
+| Đóng góp | [Contribution](#contribution) |
+| Hỗ trợ | [❤️ Support](#support) |
+| Giấy phép | [License](#license) |
+
+<a id="overview"></a>
+## Tổng quan
+
+Kho lưu trữ này cung cấp `OpenAIRequestBase`, lớp cơ sở có thể tái sử dụng để gửi các yêu cầu chat-completion của OpenAI theo quy trình JSON có cấu trúc, có tính xác định:
+
+- Xây dựng một pipeline request có thể tái sử dụng.
+- Phân tích output JSON-like một cách vững chắc.
+- Kiểm tra hình dạng phản hồi so với một mẫu.
+- Lưu cache phản hồi thành công ở máy cục bộ.
+- Tự động thử lại với bối cảnh khi việc parse/kiểm tra thất bại.
+
+README này giữ nguyên hướng dẫn dự án hiện có và mở rộng thành một tài liệu tham chiếu thiết lập thực dụng đầy đủ.
+
+<a id="features"></a>
+## Tính năng
+
+| Tính năng | Mô tả |
+|---|---|
+| Lớp bọc API lõi | Lớp `OpenAIRequestBase` đóng gói phần phối hợp request và xử lý cache. |
+| Vòng lặp retry | `send_request_with_retry(...)` lặp lại gọi API cho đến khi đạt `max_retries`. |
+| Parse JSON | `parse_response(...)` trích xuất JSON object/array đầu tiên từ đầu ra model và parse bằng `json5`. |
+| Kiểm tra shape | `validate_json(...)` kiểm tra đệ quy JSON đã parse theo `sample_json`. |
+| Hỗ trợ cache | Cache nội bộ tùy chọn với thư mục cấu hình và tên file tùy chỉnh. |
+| Cấu hình model | Sử dụng biến môi trường `OPENAI_MODEL` hoặc fallback `gpt-4-0125-preview`. |
+| Ngữ cảnh lỗi | Retry message sẽ nối output model trước đó và chi tiết exception vào system message kế tiếp. |
+
+### Trích xuất nhanh
+
 | Mục | Giá trị |
 |---|---|
 | Triển khai chính | `openai_request.py` |
@@ -30,90 +79,81 @@ README này giữ nguyên hướng dẫn gốc của dự án làm chuẩn và m
 | Mẫu sử dụng chính | Kế thừa lớp + gọi `send_request_with_retry(...)` |
 | Model dự phòng mặc định | `gpt-4-0125-preview` |
 | Cache mặc định | `cache/<hash(prompt)>.json` |
-| Thư mục i18n | `i18n/` (đã tồn tại; các file ngôn ngữ đã sẵn sàng để tạo) |
+| Thư mục i18n | `i18n/` (đã có liên kết ngôn ngữ) |
 
-## Tính Năng
-- Lớp base tái sử dụng: `OpenAIRequestBase`
-- Ngoại lệ tùy chỉnh:
-  - `JSONValidationError`
-  - `JSONParsingError`
-- Hành vi cache có thể cấu hình:
-  - bật/tắt cache (`use_cache`)
-  - thư mục cache tùy chỉnh (`cache_dir`)
-  - tên file cache chỉ định tùy chọn (`filename`)
-- Vòng lặp thử lại với `max_retries` có thể cấu hình
-- Chọn model qua biến môi trường `OPENAI_MODEL`
-- Phân tích JSON tương thích qua `json5` để giải mã linh hoạt hơn
+<a id="project-structure"></a>
+## Cấu trúc dự án
 
-## Cấu Trúc Dự Án
 ```text
 grilling_chatgpt/
 ├── README.md
 ├── openai_request.py
 ├── i18n/
-│   └── (thư mục đã tồn tại; có thể thêm README đa ngôn ngữ tại đây)
+│   ├── README.ar.md
+│   ├── README.de.md
+│   ├── README.es.md
+│   ├── README.fr.md
+│   ├── README.ja.md
+│   ├── README.ko.md
+│   ├── README.ru.md
+│   ├── README.vi.md
+│   ├── README.zh-Hans.md
+│   └── README.zh-Hant.md
 └── .auto-readme-work/
-    └── 20260228_190301/
-        ├── pipeline-context.md
-        ├── repo-structure-analysis.md
-        ├── translation-plan.txt
-        ├── language-nav-root.md
-        └── language-nav-i18n.md
+    └── ...
 ```
 
-## Yêu Cầu
-Yêu cầu gốc từ README chuẩn:
+> Giả định: repository theo kiểu library (không phải CLI), không có manifest phụ thuộc ở root, và chưa có thư mục `cache/` được tạo trước.
+
+<a id="prerequisites"></a>
+## Yêu cầu trước
+
 - Python 3.6+
-- openai
-- os
-- json
-- json5
-- re
-- traceback
-- glob
+- Gói OpenAI Python (`openai`)
+- Gói parser JSON5 (`json5`)
+- Quyền truy cập OpenAI credentials dùng bởi `openai.OpenAI()`
 
-Mã trong repository cũng import:
-- csv
-- datetime
+Các module chuẩn dùng trong code không cần thêm vào requirements:
 
-Lưu ý:
-- Các module thư viện chuẩn (`os`, `json`, `re`, `traceback`, `glob`, `csv`, `datetime`) không cần cài đặt riêng.
-- Bạn phải cấu hình thông tin xác thực OpenAI trong môi trường để `OpenAI()` có thể xác thực.
+- `os`, `json`, `json5` (bên ngoài), `traceback`, `glob`, `re`, `csv`, `datetime`
 
-### Bảng Phụ Thuộc
-| Package/Module | Loại | Cần cài đặt |
+### Bảng phụ thuộc
+
+| Package/Module | Loại | Bắt buộc |
 |---|---|---|
-| `openai` | Bên ngoài | Có (`pip install openai`) |
-| `json5` | Bên ngoài | Có (`pip install json5`) |
-| `os`, `json`, `traceback`, `glob`, `re`, `csv`, `datetime` | Python stdlib | Không |
+| `openai` | Ngoại vi | Có |
+| `json5` | Ngoại vi | Có |
+| `os`, `json`, `traceback`, `glob`, `re`, `csv`, `datetime` | Standard library | Không |
 
-## Cài Đặt
-Để bảo đảm các gói Python cần thiết đã được cài:
+<a id="installation"></a>
+## Cài đặt
+
+Cài đặt dependencies:
 
 ```bash
 pip install openai json5
 ```
 
-Thiết lập môi trường ảo tùy chọn (khuyến nghị):
+Khuyến nghị thiết lập virtual environment:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # macOS/Linux
 pip install --upgrade pip
 pip install openai json5
 ```
 
-## Cách Sử Dụng
+<a id="usage"></a>
+## Cách sử dụng
 
-### Kế Thừa OpenAIRequestBase
-Tạo một lớp con từ `OpenAIRequestBase`. Lớp con này có thể override các phương thức hiện có hoặc bổ sung chức năng mới theo nhu cầu của bạn.
+### 1) Kế thừa lớp nền tảng
 
-#### Ví dụ: WeatherInfoRequest
-Bên dưới là mẫu lớp ví dụ gốc để lấy thông tin thời tiết. Cấu trúc JSON dùng để kiểm tra được truyền trực tiếp trong prompt.
+Tạo một subclass và cung cấp các phương thức riêng theo domain prompt của bạn.
 
 ```python
 import json
 from openai_request import OpenAIRequestBase
+
 
 class WeatherInfoRequest(OpenAIRequestBase):
     def __init__(self):
@@ -122,172 +162,197 @@ class WeatherInfoRequest(OpenAIRequestBase):
     def get_weather_info(self, location):
         sample_json = {"temperature": "", "condition": ""}
         sample_json_str = json.dumps(sample_json)
-        prompt = f"What is the current weather in {location}? Expected format: {sample_json_str}"
+        prompt = f"What is the current weather in {location}? Return JSON in the form: {sample_json_str}"
         return self.send_request_with_retry(prompt, sample_json=sample_json)
+
+
+requester = WeatherInfoRequest()
+print(requester.get_weather_info("San Francisco"))
 ```
 
-Ghi chú tương thích:
-- Tài liệu trước đây đề cập `from openai_request_base import OpenAIRequestBase`.
-- Trong repository này, file triển khai là `openai_request.py`, nên import từ `openai_request`.
-
-### Gửi Request
-Dùng lớp dẫn xuất để thực hiện API request:
+### 2) Dùng một request instance trực tiếp
 
 ```python
-weather_requester = WeatherInfoRequest()
-try:
-    weather_info = weather_requester.get_weather_info("San Francisco")
-    print(weather_info)
-except Exception as e:
-    print(f"An error occurred: {e}")
-```
+from openai_request import OpenAIRequestBase
 
-### API Cốt Lõi
-Constructor của `OpenAIRequestBase`:
-
-```python
-OpenAIRequestBase(use_cache=True, max_retries=3, cache_dir='cache')
-```
-
-Phương thức request chính:
-
-```python
-send_request_with_retry(
-    prompt,
-    system_content="You are an AI.",
-    sample_json=None,
-    filename=None,
+requester = OpenAIRequestBase(use_cache=True, max_retries=3)
+result = requester.send_request_with_retry(
+    prompt="Return JSON with fields: {\"ok\": true, \"value\": 42}",
+    sample_json={"ok": False, "value": 0},
 )
+print(result)
 ```
 
-Tóm tắt hành vi:
-1. Tạo chat messages (`system` + `user`).
-2. Kiểm tra cache trước nếu `use_cache=True`.
-3. Gọi Chat Completions dùng model từ `OPENAI_MODEL` hoặc mặc định `gpt-4-0125-preview`.
-4. Trích xuất object/array JSON đầu tiên từ văn bản phản hồi.
-5. Phân tích bằng `json5`.
-6. Kiểm tra cấu trúc nếu có `sample_json`.
-7. Lưu đầu ra đã phân tích vào cache.
-8. Thử lại đến khi thành công hoặc chạm giới hạn thử lại.
+### 3) Hành vi gọi lõi
 
-### API Nhanh
-| Phương thức | Mục đích |
-|---|---|
-| `send_request_with_retry(...)` | Thực thi request, phân tích, kiểm tra, thử lại, ghi cache |
-| `parse_response(response)` | Trích xuất object/array JSON đầu tiên và phân tích qua `json5` |
-| `validate_json(json_data, sample_json)` | Kiểm tra shape/type đệ quy |
-| `save_to_cache(...)` / `load_from_cache(...)` | Lưu/tải payload phản hồi JSON |
-| `get_cache_file_path(prompt, filename=None)` | Tính đường dẫn cache đích và tạo thư mục cha |
+`send_request_with_retry(...)`:
 
-## Cấu Hình
+1. Tùy chọn đọc cache theo prompt (hoặc filename).
+2. Gọi `client.chat.completions.create(...)`.
+3. Trích xuất JSON text và parse bằng `json5`.
+4. Kiểm tra so với `sample_json` (nếu được cung cấp).
+5. Lưu response đã parse vào cache.
+6. Trả về JSON đã parse nếu thành công.
 
-### Biến Môi Trường
-- `OPENAI_MODEL`: ghi đè tên model khi gửi request.
-  - Mặc định trong code: `gpt-4-0125-preview`
+Retry sẽ nối output hiện tại và chi tiết exception vào hệ thống message tiếp theo, rồi thử lại cho tới khi đạt giới hạn.
 
-### Xác Thực OpenAI
-Đặt API key OpenAI trước khi chạy code, ví dụ:
+<a id="api-reference"></a>
+## Tham chiếu API
+
+### `OpenAIRequestBase.__init__(use_cache=True, max_retries=3, cache_dir='cache')`
+- Thiết lập client OpenAI.
+- Kiểm soát chiến lược cache.
+- Tạo trước thư mục cache qua `ensure_dir_exists`.
+
+### `send_request_with_retry(prompt, system_content='You are an AI.', sample_json=None, filename=None)`
+- Thực thi orchestration request.
+- Trả về output JSON đã parse.
+- Ném `Exception` tổng quát khi đã đạt giới hạn retry.
+
+### `parse_response(response)`
+- Tìm JSON object `{...}` hoặc array `[...]` đầu tiên và parse bằng `json5`.
+
+### `validate_json(json_data, sample_json)`
+- Đảm bảo kiểu dữ liệu khớp giữa data thực và mẫu.
+- Kiểm tra khóa bắt buộc của dict và validate list/item theo đệ quy.
+
+### `get_cache_file_path(prompt, filename=None)`
+- Tính và đảm bảo đường dẫn cache.
+- Mặc định dùng tên file hash xác định: `abs(hash(prompt)).json`.
+
+### `save_to_cache(prompt, response, filename=None)` / `load_from_cache(prompt, filename=None)`
+- Ghi/đọc payload JSON đã cache cho tính tái lập kết quả.
+
+<a id="configuration"></a>
+## Cấu hình
+
+### Thông tin xác thực OpenAI
+
+Đặt credentials trong môi trường trước khi chạy. Hành vi client thực tế do gói `openai` cài đặt quản lý:
 
 ```bash
-export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_API_KEY="your_api_key_here"  # nếu môi trường/client của bạn cần biến này
 ```
 
-### Cấu Hình Cache
-- Thư mục cache mặc định: `cache/`
-- Tên file cache mặc định: hash của prompt (`<hash>.json`)
-- Hỗ trợ đường dẫn file tùy chỉnh qua tham số `filename`
+### Chọn model
 
-Ví dụ với tên file cache chỉ định:
-
-```python
-result = weather_requester.send_request_with_retry(
-    prompt="...",
-    sample_json={"temperature": "", "condition": ""},
-    filename="weather/sf.json",
-)
+```bash
+export OPENAI_MODEL="gpt-4o-mini"  # hoặc bất kỳ model nào tài khoản bạn hỗ trợ
 ```
 
-## Ví Dụ
+### Cấu hình cache
 
-### Ví dụ 1: Kiểm Tra Dạng Danh Sách
-```python
-sample_json = [{"name": "", "age": 0}]
-prompt = "Return a JSON array of people with fields name and age."
-result = requester.send_request_with_retry(prompt, sample_json=sample_json)
-```
+- Bật/tắt bằng `use_cache`
+- Cấu hình thư mục cache bằng `cache_dir`
+- Ghi đè tên file bằng `filename`
 
-### Ví dụ 2: Tắt Cache
 ```python
-requester = OpenAIRequestBase(use_cache=False, max_retries=3)
-```
-
-### Ví dụ 3: Prompt System Tùy Chỉnh
-```python
+requester = OpenAIRequestBase(use_cache=True, cache_dir="my_cache")
 result = requester.send_request_with_retry(
-    prompt="Return output as JSON only.",
-    system_content="You are a strict JSON generator.",
-    sample_json={"ok": True},
+    prompt="Return a JSON summary of the weather risk profile.",
+    sample_json={"risk_level": "", "notes": []},
+    filename="weather/summary.json",
 )
 ```
 
-## Ghi Chú Phát Triển
-- Dự án hiện chưa có `requirements.txt`, `pyproject.toml`, hoặc test suite ở thư mục gốc.
-- Kiến trúc hiện tại theo kiểu thư viện (import và kế thừa), không phải công cụ CLI.
-- `parse_response` dùng regex để trích khối JSON; phản hồi mơ hồ có nhiều khối giống JSON có thể cần thiết kế prompt cẩn thận.
-- Luồng thử lại sẽ nối đầu ra trước đó của mô hình và chi tiết lỗi vào các system message tiếp theo.
+<a id="examples"></a>
+## Ví dụ
 
-### Ghi Chú Độ Chính Xác Theo Repository
-- `openai_request.py` hiện import `csv`, `datetime`, và `glob`; các import này được giữ trong tài liệu để đảm bảo chính xác dù không phải trọng tâm của luồng sử dụng chính.
-- `JSONParsingError` in nội dung JSON thất bại để debug. Cần lưu ý dữ liệu nhạy cảm có thể bị ghi log trong môi trường production.
+### Ví dụ A: Kiểm tra mảng JSON
 
-## Khắc Phục Sự Cố
+```python
+requester = OpenAIRequestBase()
+sample_json = [{"name": "", "age": 0}]
+prompt = 'Return a JSON array of people with fields name and age.'
+result = requester.send_request_with_retry(prompt=prompt, sample_json=sample_json)
+print(result)
+```
 
-### `No JSON structure found` / `No matching JSON structure found`
-- Bảo đảm prompt yêu cầu đầu ra JSON một cách rõ ràng.
-- Bao gồm ví dụ định dạng mong muốn trong prompt.
-- Tránh yêu cầu markdown bọc quanh JSON.
+### Ví dụ B: Tắt cache
 
-### `Failed to decode JSON`
-- Đầu ra mô hình có thể chứa JSON sai cú pháp.
-- Siết chặt hướng dẫn prompt: “Return valid JSON only, no explanation text.”
+```python
+requester = OpenAIRequestBase(use_cache=False, max_retries=2)
+print(requester.send_request_with_retry("Return strict JSON: {\"status\": \"ok\"}", sample_json={"status": ""}))
+```
 
-### Lỗi kiểm tra (`JSONValidationError`)
-- Xác nhận key bắt buộc và kiểu container khớp chính xác với `sample_json`.
-- Với schema dạng list, `sample_json[0]` được xem là mẫu cho mọi phần tử trong list.
+### Ví dụ C: Prompt hệ thống tùy chỉnh
 
-### Cache gây nhầm lẫn hoặc kết quả cũ
-- Tắt cache (`use_cache=False`) khi debug.
-- Dùng `filename` chỉ định rõ để tách các lần thử nghiệm.
+```python
+requester = OpenAIRequestBase()
+result = requester.send_request_with_retry(
+    prompt="Return JSON only with keys: summary, sources.",
+    system_content="You are a concise JSON-only analyst.",
+    sample_json={"summary": "", "sources": []},
+)
+```
 
-### Ma Trận Khắc Phục Sự Cố
-| Triệu chứng | Nguyên nhân khả dĩ | Cách khắc phục thực tế |
-|---|---|---|
-| Đầu ra rỗng/không phải JSON | Prompt chưa đủ chặt | Yêu cầu phản hồi chỉ JSON với schema tường minh |
-| Lỗi parse | JSON trong đầu ra mô hình sai cú pháp | Thêm "Return valid JSON only, no explanation" |
-| Lỗi validation | Shape không khớp so với `sample_json` | Căn chỉnh key/type bắt buộc và cấu trúc phần tử list |
-| Nhận phản hồi cũ ngoài ý muốn | Cache hit | Tắt cache hoặc đổi `filename` |
+<a id="development-notes"></a>
+## Ghi chú phát triển
 
-## Lộ Trình
-- Thêm đóng gói chuẩn (`pyproject.toml`) và phiên bản phụ thuộc được ghim.
-- Thêm test tự động cho phân tích, kiểm tra, cache và hành vi thử lại.
-- Cải thiện chiến lược trích xuất JSON để giảm các tình huống biên của regex.
-- Thêm ví dụ/script có thể chạy trong thư mục `examples/`.
-- Bổ sung các README bản địa hóa trong `i18n/` và liên kết ở dòng tùy chọn ngôn ngữ.
+- Repository này chưa có `requirements.txt`, `pyproject.toml`, `setup.py`, hoặc test suite ở root.
+- Các import cốt lõi của package có vài module stdlib ngoài luồng chính (`csv`, `datetime`, `glob`) được giữ lại để tương thích.
+- `parse_response` phụ thuộc regex trích xuất; nếu đầu ra model có nhiều block JSON-like, prompt cần rõ ràng hơn.
+- Kiểm tra JSON chỉ ép kiểu/cấu trúc, không xác thực tính đúng đắn ngữ nghĩa của giá trị.
+- Luồng retry gắn output AI trước đó và chi tiết lỗi vào tin nhắn tiếp theo, có thể làm bối cảnh tăng kích thước.
 
-## Đóng Góp
-Bạn có thể đóng góp cho dự án này bằng cách tạo pull request hoặc mở issue để nâng cấp tính năng hay sửa lỗi.
+<a id="troubleshooting"></a>
+## Khắc phục sự cố
 
-Khi đóng góp, vui lòng bao gồm:
-- các bước tái hiện lỗi rõ ràng
-- hành vi kỳ vọng so với hành vi thực tế
-- snippet sử dụng tối giản khi phù hợp
+### Triệu chứng: `JSONParsingError` lặp lại
+- Đảm bảo output model bị giới hạn ở dạng JSON-only.
+- Rút gọn prompt và cung cấp schema mẫu rõ ràng.
+- Nếu có thể có nhiều mảnh JSON, yêu cầu `Return only one JSON object/array.`
 
-## Giới Thiệu
-Dự án được quản lý bởi Lachlan Chen và là một phần của các sáng kiến thuộc kênh "The Art of Lazying".
+### Triệu chứng: `Maximum retries reached without success`
+- Kiểm tra `OPENAI_API_KEY` và truy cập mạng.
+- Xác nhận tên model qua `OPENAI_MODEL` có tồn tại với tài khoản của bạn.
+- Giảm độ phức tạp prompt và kiểm tra cẩn thận dạng/type của `sample_json`.
 
-## Giấy Phép
-Dự án này được cấp phép theo MIT License - xem file [LICENSE](LICENSE) để biết chi tiết.
+### Triệu chứng: Cache không được hit
+- File cache được khóa theo hash của prompt.
+- Thay đổi nội dung prompt hoặc filename sẽ tạo cache entry mới.
+- Kiểm tra quyền truy cập thư mục cache.
 
-Ghi chú repository:
-- File `LICENSE` đã được tham chiếu trong README gốc và được giữ lại ở đây như hướng dẫn chuẩn.
-- Nếu `LICENSE` hiện chưa có trong bản checkout này, hãy thêm vào để làm rõ thông tin cấp phép.
+### Triệu chứng: Exception không rõ từ `json5`
+- Bao gồm ví dụ chặt chẽ trong prompt, đặc biệt với chuỗi chứa dấu ngoặc kép/dấu ngoặc nhọn.
+- Dùng cấu trúc dữ liệu đơn giản trước (object phẳng), rồi mới lồng sâu khi cần.
+
+<a id="roadmap"></a>
+## Lộ trình
+
+Các cải tiến dự kiến phù hợp với pattern code hiện tại:
+
+- [ ] Thêm test suite tối thiểu (`pytest`) cho parse/validation/cache.
+- [ ] Thêm logging có cấu trúc thay cho `print` trực tiếp.
+- [ ] Thêm đường dẫn async tùy chọn (`asyncio` variant).
+- [ ] Thêm ví dụ cho batch prompts và phản hồi đa schema.
+- [ ] Thêm chế độ validate theo JSON Schema chặt chẽ.
+
+<a id="contribution"></a>
+## Đóng góp
+
+Mọi đóng góp đều được chào đón.
+
+1. Fork repository.
+2. Tạo một nhánh feature.
+3. Thêm/cập nhật ví dụ README/API và giữ thay đổi hành vi đồng bộ với implement hiện tại.
+4. Kiểm tra thủ công các nhánh request/parsing (cache bật/tắt, retry, validation).
+5. Mở PR với lý do và ví dụ rõ ràng.
+
+Tiêu chuẩn đóng góp đề xuất:
+
+- Giữ docs đồng bộ với hành vi code.
+- Tránh đổi cấu trúc cache mặc định khi chưa cập nhật README này.
+- Ưu tiên thay đổi backward-compatible cho request orchestration.
+
+<a id="support"></a>
+## Giấy phép
+
+Repository hiện chưa có file license trong checkout này. Hãy thêm file `LICENSE` để rõ ràng về mặt pháp lý trước khi phát hành bản production.
+
+
+## ❤️ Support
+
+| Donate | PayPal | Stripe |
+| --- | --- | --- |
+| [![Donate](https://camo.githubusercontent.com/24a4914f0b42c6f435f9e101621f1e52535b02c225764b2f6cc99416926004b7/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f446f6e6174652d4c617a79696e674172742d3045413545393f7374796c653d666f722d7468652d6261646765266c6f676f3d6b6f2d6669266c6f676f436f6c6f723d7768697465)](https://chat.lazying.art/donate) | [![PayPal](https://camo.githubusercontent.com/d0f57e8b016517a4b06961b24d0ca87d62fdba16e18bbdb6aba28e978dc0ea21/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f50617950616c2d526f6e677a686f754368656e2d3030343537433f7374796c653d666f722d7468652d6261646765266c6f676f3d70617970616c266c6f676f436f6c6f723d7768697465)](https://paypal.me/RongzhouChen) | [![Stripe](https://camo.githubusercontent.com/1152dfe04b6943afe3a8d2953676749603fb9f95e24088c92c97a01a897b4942/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f5374726970652d446f6e6174652d3633354246463f7374796c653d666f722d7468652d6261646765266c6f676f3d737472697065266c6f676f436f6c6f723d7768697465)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |

@@ -1,6 +1,8 @@
 [English](README.md) · [العربية](i18n/README.ar.md) · [Español](i18n/README.es.md) · [Français](i18n/README.fr.md) · [日本語](i18n/README.ja.md) · [한국어](i18n/README.ko.md) · [Tiếng Việt](i18n/README.vi.md) · [中文 (简体)](i18n/README.zh-Hans.md) · [中文（繁體）](i18n/README.zh-Hant.md) · [Deutsch](i18n/README.de.md) · [Русский](i18n/README.ru.md)
 
 
+[![LazyingArt banner](https://github.com/lachlanchen/lachlanchen/raw/main/figs/banner.png)](https://github.com/lachlanchen/lachlanchen/blob/main/figs/banner.png)
+
 # OpenAIRequestBase Usage Guide
 
 ![Python](https://img.shields.io/badge/Python-3.6%2B-3776AB?logo=python&logoColor=white)
@@ -11,18 +13,63 @@
 
 > Structured OpenAI request/retry/caching utilities with JSON parsing + shape validation.
 
+---
+
+## ✨ Highlights
+
+| Area | Details |
+|---|---|
+| API pattern | Subclass and implement focused request methods around a shared retry pipeline |
+| Output contract | Deterministic JSON parsing + schema-structure validation |
+| Reliability | Cached responses, contextual retries, and clear failure surfacing |
+| Compatibility | Python 3.6+, OpenAI SDK, JSON5 |
+
+## 🚀 Quick Navigation
+
+| Section | Link |
+|---|---|
+| Overview | [Overview](#overview) |
+| Features | [Features](#features) |
+| Project Structure | [Project Structure](#project-structure) |
+| Prerequisites | [Prerequisites](#prerequisites) |
+| Installation | [Installation](#installation) |
+| Usage | [Usage](#usage) |
+| API Reference | [API Reference](#api-reference) |
+| Configuration | [Configuration](#configuration) |
+| Examples | [Examples](#examples) |
+| Development Notes | [Development Notes](#development-notes) |
+| Troubleshooting | [Troubleshooting](#troubleshooting) |
+| Roadmap | [Roadmap](#roadmap) |
+| Contribution | [Contribution](#contribution) |
+| Support | [❤️ Support](#️-support) |
+| License | [License](#license) |
+
 ## Overview
-This repository hosts the `OpenAIRequestBase` class, which provides a structured approach for making requests to the OpenAI API and handling JSON responses.
 
-It supports:
-- request retries with incremental error context
-- response caching to local JSON files
-- JSON extraction/parsing from model text outputs
-- recursive JSON shape validation against a provided sample
+This repository provides `OpenAIRequestBase`, a reusable base class for making OpenAI chat-completion requests with deterministic, structured JSON workflows:
 
-This README keeps the original project guidance as canonical and expands it with repository-accurate details.
+- Build a reusable request pipeline.
+- Parse JSON-like output robustly.
+- Validate response shape against a template.
+- Cache successful responses locally.
+- Retry automatically with context when parsing/validation fails.
 
-## Quick Snapshot
+This README keeps the existing project guidance and expands into a complete practical setup reference.
+
+## Features
+
+| Feature | Description |
+|---|---|
+| Core API wrapper | The `OpenAIRequestBase` class encapsulates request orchestration and cache handling. |
+| Retry loop | `send_request_with_retry(...)` repeats calls on errors until `max_retries` is reached. |
+| JSON parsing | `parse_response(...)` extracts the first JSON object/array from model output and parses it via `json5`. |
+| Shape validation | `validate_json(...)` recursively validates parsed JSON against `sample_json`. |
+| Cache support | Optional local cache with configurable directory and optional custom filename. |
+| Model configuration | Uses `OPENAI_MODEL` environment variable or fallback `gpt-4-0125-preview`. |
+| Error context | Retry messages append model output and exception details to the next system message. |
+
+### Quick Snapshot
+
 | Item | Value |
 |---|---|
 | Main implementation | `openai_request.py` |
@@ -30,90 +77,77 @@ This README keeps the original project guidance as canonical and expands it with
 | Primary pattern | Subclass + call `send_request_with_retry(...)` |
 | Default model fallback | `gpt-4-0125-preview` |
 | Cache default | `cache/<hash(prompt)>.json` |
-| i18n directory | `i18n/` (exists; language files are prepared for generation) |
-
-## Features
-- Reusable base class: `OpenAIRequestBase`
-- Custom exceptions:
-  - `JSONValidationError`
-  - `JSONParsingError`
-- Configurable cache behavior:
-  - enable/disable cache (`use_cache`)
-  - custom cache directory (`cache_dir`)
-  - optional explicit cache filename (`filename`)
-- Retry loop with configurable `max_retries`
-- Environment-based model selection via `OPENAI_MODEL`
-- Compatible JSON parsing via `json5` for tolerant decoding
+| i18n directory | `i18n/` (language links present) |
 
 ## Project Structure
+
 ```text
 grilling_chatgpt/
 ├── README.md
 ├── openai_request.py
 ├── i18n/
-│   └── (directory exists; multilingual README files can be added here)
+│   ├── README.ar.md
+│   ├── README.de.md
+│   ├── README.es.md
+│   ├── README.fr.md
+│   ├── README.ja.md
+│   ├── README.ko.md
+│   ├── README.ru.md
+│   ├── README.vi.md
+│   ├── README.zh-Hans.md
+│   └── README.zh-Hant.md
 └── .auto-readme-work/
-    └── 20260228_190301/
-        ├── pipeline-context.md
-        ├── repo-structure-analysis.md
-        ├── translation-plan.txt
-        ├── language-nav-root.md
-        └── language-nav-i18n.md
+    └── ...
 ```
 
-## Requirements
-Original requirements from the canonical README:
+> Assumption: this repository is library-style (no CLI), no dependency manifest exists at root, and there is no pre-created `cache/` directory.
+
+## Prerequisites
+
 - Python 3.6+
-- openai
-- os
-- json
-- json5
-- re
-- traceback
-- glob
+- OpenAI Python package (`openai`)
+- JSON5 parser package (`json5`)
+- Access to OpenAI credentials usable by `openai.OpenAI()`
 
-Repository code also imports:
-- csv
-- datetime
+Standard library modules used in code are not added to requirements:
 
-Notes:
-- Standard-library modules (`os`, `json`, `re`, `traceback`, `glob`, `csv`, `datetime`) do not require separate installation.
-- You must configure OpenAI credentials in your environment so `OpenAI()` can authenticate.
+- `os`, `json`, `json5` (third-party), `traceback`, `glob`, `re`, `csv`, `datetime`
 
 ### Dependency Table
-| Package/Module | Type | Required Installation |
+
+| Package/Module | Type | Required |
 |---|---|---|
-| `openai` | External | Yes (`pip install openai`) |
-| `json5` | External | Yes (`pip install json5`) |
-| `os`, `json`, `traceback`, `glob`, `re`, `csv`, `datetime` | Python stdlib | No |
+| `openai` | External | Yes |
+| `json5` | External | Yes |
+| `os`, `json`, `traceback`, `glob`, `re`, `csv`, `datetime` | Standard library | No |
 
 ## Installation
-To ensure the necessary Python packages are installed:
+
+Install dependencies:
 
 ```bash
 pip install openai json5
 ```
 
-Optional (recommended) virtual environment setup:
+Recommended virtual environment setup:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # macOS/Linux
 pip install --upgrade pip
 pip install openai json5
 ```
 
 ## Usage
 
-### Extending OpenAIRequestBase
-Create a subclass of `OpenAIRequestBase`. This subclass can override existing methods or introduce new functionalities specific to your needs.
+### 1) Extend the base class
 
-#### Example: WeatherInfoRequest
-Below is the original example class pattern to fetch weather information. The JSON structure used for validation is passed directly in the prompt.
+Create a subclass and expose your own methods for domain prompts.
 
 ```python
 import json
 from openai_request import OpenAIRequestBase
+
 
 class WeatherInfoRequest(OpenAIRequestBase):
     def __init__(self):
@@ -122,172 +156,188 @@ class WeatherInfoRequest(OpenAIRequestBase):
     def get_weather_info(self, location):
         sample_json = {"temperature": "", "condition": ""}
         sample_json_str = json.dumps(sample_json)
-        prompt = f"What is the current weather in {location}? Expected format: {sample_json_str}"
+        prompt = f"What is the current weather in {location}? Return JSON in the form: {sample_json_str}"
         return self.send_request_with_retry(prompt, sample_json=sample_json)
+
+
+requester = WeatherInfoRequest()
+print(requester.get_weather_info("San Francisco"))
 ```
 
-Compatibility note:
-- Earlier documentation referenced `from openai_request_base import OpenAIRequestBase`.
-- In this repository, the implementation file is `openai_request.py`, so import from `openai_request`.
-
-### Making Requests
-Use the derived class to perform API requests:
+### 2) Use a request instance directly
 
 ```python
-weather_requester = WeatherInfoRequest()
-try:
-    weather_info = weather_requester.get_weather_info("San Francisco")
-    print(weather_info)
-except Exception as e:
-    print(f"An error occurred: {e}")
-```
+from openai_request import OpenAIRequestBase
 
-### Core API
-`OpenAIRequestBase` constructor:
-
-```python
-OpenAIRequestBase(use_cache=True, max_retries=3, cache_dir='cache')
-```
-
-Main request method:
-
-```python
-send_request_with_retry(
-    prompt,
-    system_content="You are an AI.",
-    sample_json=None,
-    filename=None,
+requester = OpenAIRequestBase(use_cache=True, max_retries=3)
+result = requester.send_request_with_retry(
+    prompt="Return JSON with fields: {\"ok\": true, \"value\": 42}",
+    sample_json={"ok": False, "value": 0},
 )
+print(result)
 ```
 
-Behavior summary:
-1. Builds chat messages (`system` + `user`).
-2. Checks cache first when `use_cache=True`.
-3. Calls Chat Completions using model from `OPENAI_MODEL` or fallback `gpt-4-0125-preview`.
-4. Extracts first JSON object/array from response text.
-5. Parses with `json5`.
-6. Validates structure if `sample_json` is provided.
-7. Saves parsed output to cache.
-8. Retries until success or retry limit reached.
+### 3) Core call behavior
 
-### API At a Glance
-| Method | Purpose |
-|---|---|
-| `send_request_with_retry(...)` | Request execution, parsing, validation, retries, cache write |
-| `parse_response(response)` | Extract first JSON object/array and parse via `json5` |
-| `validate_json(json_data, sample_json)` | Recursive shape/type validation |
-| `save_to_cache(...)` / `load_from_cache(...)` | Persist/retrieve JSON response payloads |
-| `get_cache_file_path(prompt, filename=None)` | Compute cache target path and create parent directories |
+`send_request_with_retry(...)`:
+
+1. Optionally reads cached response for the prompt (or filename).
+2. Calls `client.chat.completions.create(...)`.
+3. Extracts JSON text and parses with `json5`.
+4. Validates against `sample_json` (if supplied).
+5. Caches parsed response.
+6. Returns parsed JSON if successful.
+
+Retries append current output and exception info to the next system message, then retry until limit is reached.
+
+## API Reference
+
+### `OpenAIRequestBase.__init__(use_cache=True, max_retries=3, cache_dir='cache')`
+- Sets up the OpenAI client.
+- Controls cache strategy.
+- Pre-creates cache directory via `ensure_dir_exists`.
+
+### `send_request_with_retry(prompt, system_content='You are an AI.', sample_json=None, filename=None)`
+- Executes request orchestration.
+- Returns parsed JSON output.
+- Raises generic `Exception` if retry cap is reached.
+
+### `parse_response(response)`
+- Finds the first JSON object `{...}` or array `[...]` and parses with `json5`.
+
+### `validate_json(json_data, sample_json)`
+- Ensures type match between actual and sample.
+- Verifies required dict keys and validates list/item structure recursively.
+
+### `get_cache_file_path(prompt, filename=None)`
+- Computes and ensures cache path.
+- Uses deterministic hash filename by default: `abs(hash(prompt)).json`.
+
+### `save_to_cache(prompt, response, filename=None)` / `load_from_cache(prompt, filename=None)`
+- Writes/reads cached JSON payloads for deterministic repeatability.
 
 ## Configuration
 
-### Environment Variables
-- `OPENAI_MODEL`: model name override for requests.
-  - Default in code: `gpt-4-0125-preview`
+### OpenAI credentials
 
-### OpenAI Authentication
-Set your OpenAI API key before running code, for example:
+Set credentials in your environment before running. Actual client behavior is managed by the installed `openai` package:
 
 ```bash
-export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_API_KEY="your_api_key_here"  # if your environment/client requires this
 ```
 
-### Cache Configuration
-- Default cache directory: `cache/`
-- Default cache filename: hash of prompt (`<hash>.json`)
-- Custom file path supported via `filename` parameter
+### Model selection
 
-Example with explicit cache filename:
+```bash
+export OPENAI_MODEL="gpt-4o-mini"  # or any model supported by your account
+```
+
+### Cache configuration
+
+- Toggle with `use_cache`
+- Configure cache directory with `cache_dir`
+- Override filename with `filename`
 
 ```python
-result = weather_requester.send_request_with_retry(
-    prompt="...",
-    sample_json={"temperature": "", "condition": ""},
-    filename="weather/sf.json",
+requester = OpenAIRequestBase(use_cache=True, cache_dir="my_cache")
+result = requester.send_request_with_retry(
+    prompt="Return a JSON summary of the weather risk profile.",
+    sample_json={"risk_level": "", "notes": []},
+    filename="weather/summary.json",
 )
 ```
 
 ## Examples
 
-### Example 1: List-shaped Validation
+### Example A: JSON array validation
+
 ```python
+requester = OpenAIRequestBase()
 sample_json = [{"name": "", "age": 0}]
-prompt = "Return a JSON array of people with fields name and age."
-result = requester.send_request_with_retry(prompt, sample_json=sample_json)
+prompt = 'Return a JSON array of people with fields name and age.'
+result = requester.send_request_with_retry(prompt=prompt, sample_json=sample_json)
+print(result)
 ```
 
-### Example 2: Disable Cache
+### Example B: Disable cache
+
 ```python
-requester = OpenAIRequestBase(use_cache=False, max_retries=3)
+requester = OpenAIRequestBase(use_cache=False, max_retries=2)
+print(requester.send_request_with_retry("Return strict JSON: {\"status\": \"ok\"}", sample_json={"status": ""}))
 ```
 
-### Example 3: Custom System Prompt
+### Example C: Custom system prompt
+
 ```python
+requester = OpenAIRequestBase()
 result = requester.send_request_with_retry(
-    prompt="Return output as JSON only.",
-    system_content="You are a strict JSON generator.",
-    sample_json={"ok": True},
+    prompt="Return JSON only with keys: summary, sources.",
+    system_content="You are a concise JSON-only analyst.",
+    sample_json={"summary": "", "sources": []},
 )
 ```
 
 ## Development Notes
-- This project currently has no `requirements.txt`, `pyproject.toml`, or test suite in the repository root.
-- Current architecture is library-style (import and subclass), not a CLI tool.
-- `parse_response` uses regex-based JSON block extraction; ambiguous responses with multiple JSON-like blocks may require careful prompt design.
-- The retry path appends prior model output and error details into subsequent system messages.
 
-### Repository-Accuracy Notes
-- `openai_request.py` currently imports `csv`, `datetime`, and `glob`; these imports are preserved in this documentation for accuracy even if not central to the main usage path.
-- `JSONParsingError` prints failed JSON content for debugging. Be mindful of logging sensitive output in production contexts.
+- This repository has no `requirements.txt`, `pyproject.toml`, `setup.py`, or test suite in root.
+- Core package imports include several stdlib modules beyond critical path (`csv`, `datetime`, `glob`) which are preserved for compatibility.
+- `parse_response` relies on regex extraction; if model output has multiple JSON-like blocks, explicit prompting becomes more important.
+- JSON validation only enforces structure/type shape, not semantic value validity.
+- Retry path appends prior AI output and error details into follow-up messages, which can increase context size.
 
 ## Troubleshooting
 
-### `No JSON structure found` / `No matching JSON structure found`
-- Ensure your prompt asks for JSON output explicitly.
-- Include an expected format example in the prompt.
-- Avoid requesting markdown wrappers around JSON.
+### Symptom: `JSONParsingError` occurs repeatedly
+- Ensure the model output is constrained to JSON-only text.
+- Narrow the prompt and provide an explicit sample schema.
+- If multiple JSON fragments are possible, request `Return only one JSON object/array.`
 
-### `Failed to decode JSON`
-- Model output may contain malformed JSON syntax.
-- Tighten prompt instructions: “Return valid JSON only, no explanation text.”
+### Symptom: `Maximum retries reached without success`
+- Check `OPENAI_API_KEY` and network access.
+- Confirm model name via `OPENAI_MODEL` exists for your account.
+- Lower prompt complexity and validate `sample_json` type/value shape carefully.
 
-### Validation errors (`JSONValidationError`)
-- Confirm required keys and container types match `sample_json` exactly.
-- For list schemas, `sample_json[0]` is treated as the template for all list items.
+### Symptom: Cache not hit
+- Cache file is keyed by prompt hash.
+- Changing prompt text or filename will create a new cache entry.
+- Verify cache directory permissions.
 
-### Cache confusion or stale results
-- Disable cache (`use_cache=False`) during debugging.
-- Use explicit `filename` values to isolate experiment runs.
-
-### Troubleshooting Matrix
-| Symptom | Likely Cause | Practical Fix |
-|---|---|---|
-| Empty/non-JSON output | Prompt not strict enough | Ask for JSON-only response with explicit schema |
-| Parse failure | Invalid JSON syntax in model output | Add "Return valid JSON only, no explanation" |
-| Validation failure | Shape mismatch vs `sample_json` | Align required keys/types and list item structure |
-| Unexpected old response | Cache hit | Disable cache or change `filename` |
+### Symptom: Unclear exceptions from `json5`
+- Include strict examples in prompt, especially for strings containing quotes/braces.
+- Use simpler data structures first (flat objects, then nest once needed).
 
 ## Roadmap
-- Add formal packaging (`pyproject.toml`) and pinned dependencies.
-- Add automated tests for parsing, validation, caching, and retry behavior.
-- Improve JSON extraction strategy to reduce regex edge cases.
-- Add runnable examples/scripts under an `examples/` directory.
-- Populate `i18n/` with localized README files linked in the language options line.
 
-## Contributing
-Feel free to contribute to this project by submitting pull requests or opening issues to enhance functionalities or fix bugs.
+Planned improvements consistent with existing code patterns:
 
-When contributing, please include:
-- clear reproduction steps for bug reports
-- expected vs actual behavior
-- minimal usage snippets when relevant
+- [ ] Add a minimal test suite (`pytest`) around parse/validation/cache behavior.
+- [ ] Add structured logging instead of direct `print` statements.
+- [ ] Add optional async path (`asyncio` variant).
+- [ ] Add examples for batch prompts and multi-schema responses.
+- [ ] Add optional strict JSON Schema validation mode.
 
-## About
-The project is managed by Lachlan Chen and is part of the "The Art of Lazying" channel initiatives.
+## Contribution
+
+Contributions are welcome.
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Add or update README/API examples and keep behavior changes aligned with existing implementation.
+4. Test manually for request/parsing paths (cache on/off, retries, validation).
+5. Open a PR with clear rationale and examples.
+
+Suggested contribution standards:
+
+- Keep docs synchronized with code behavior.
+- Avoid changing default caching shape without updating this README.
+- Prefer backward-compatible changes to request orchestration.
+
+## ❤️ Support
+
+| Donate | PayPal | Stripe |
+| --- | --- | --- |
+| [![Donate](https://camo.githubusercontent.com/24a4914f0b42c6f435f9e101621f1e52535b02c225764b2f6cc99416926004b7/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f446f6e6174652d4c617a79696e674172742d3045413545393f7374796c653d666f722d7468652d6261646765266c6f676f3d6b6f2d6669266c6f676f436f6c6f723d7768697465)](https://chat.lazying.art/donate) | [![PayPal](https://camo.githubusercontent.com/d0f57e8b016517a4b06961b24d0ca87d62fdba16e18bbdb6aba28e978dc0ea21/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f50617950616c2d526f6e677a686f754368656e2d3030343537433f7374796c653d666f722d7468652d6261646765266c6f676f3d70617970616c266c6f676f436f6c6f723d7768697465)](https://paypal.me/RongzhouChen) | [![Stripe](https://camo.githubusercontent.com/1152dfe04b6943afe3a8d2953676749603fb9f95e24088c92c97a01a897b4942/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f5374726970652d446f6e6174652d3633354246463f7374796c653d666f722d7468652d6261646765266c6f676f3d737472697065266c6f676f436f6c6f723d7768697465)](https://buy.stripe.com/aFadR8gIaflgfQV6T4fw400) |
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Repository note:
-- A `LICENSE` file was referenced in the original README and preserved here as canonical guidance.
-- If `LICENSE` is currently missing in this checkout, add it to keep licensing explicit.
+Repository-level license file is not present in this checkout. Add a `LICENSE` file for legal clarity before production distribution.
